@@ -1,0 +1,72 @@
+# -----------------------------------------------------------------------------
+#   Define Transit Scheduler parameters
+# -----------------------------------------------------------------------------
+
+#### CATALOG FILES #####
+EXOPLANET_CATALOG: "exoplanet.eu_catalog.csv"
+#-------------------------------------
+
+#### CONFIGURATION PARAMETERS #####
+INCLUDE_GAIA_DR3_INFO: False
+FULL_TRANSITS_ONLY: True
+#-------------------------------------
+
+#### DEFINE DATE RANGE TO SCHEDULE TRANSITS #####
+START_DATE: "2024-01-01T00:00:00"
+END_DATE: "2024-12-31T23:59:59"
+#-------------------------------------
+
+#### OBSERVATORY INFO #####
+# define observatory name
+OBSERVATORY: "OPD"
+# define time zone in hours
+TIMEZONE: -3
+# define East longitude in degrees
+LONGITUDE: 314.4175
+# define North latitude in degrees
+LATITUDE: -22.53444
+# define altitude im meters
+ALTITUDE: 1864
+#-------------------------------------
+
+#### OBSERVATORY INFO #####
+# define observatory name
+#OBSERVATORY: "Gemini South"
+# define time zone in hours
+#TIMEZONE: -4
+# define East longitude in degrees
+#LONGITUDE: 289.2767
+# define North latitude in degrees
+#LATITUDE: -30.24166667
+# define altitude im meters
+#ALTITUDE: 2737
+#-------------------------------------
+
+#### CATALOG SELECTION CRITERIA #####
+# Define minimum and maximum transit depth
+MIN_TRANSIT_DEPTH: 0.003
+MAX_TRANSIT_DEPTH: 0.05
+
+# Define minimum and maximum orbital period (days)
+MIN_PERIOD: 1
+MAX_PERIOD: 30
+
+# Define minimum and maximum planet mass (MJup)
+MIN_MASS: 0.01
+MAX_MASS: 13.0
+
+# Define minimum and maximum V magnitude
+MIN_VMAG: -1
+MAX_VMAG: 15.0
+
+# Define minimum and maximum declination (deg)
+MIN_DECLINATION: -90
+MAX_DECLINATION: 30
+
+# Define minimum and maximum right ascention (deg)
+MIN_RA: 0
+MAX_RA: 360
+
+# Define minimum out-of-transit baseline (hours)
+MIN_BASELINE: 1.0
+#-------------------------------------
