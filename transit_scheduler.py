@@ -58,9 +58,8 @@ params = init_params(options.params)
 if options.exoplanet_catalog != "":
     params["EXOPLANET_CATALOG"] = options.exoplanet_catalog
 
-# load catalog
+# load exoplanet.eu catalog
 exoplanets = ascii.read(params["EXOPLANET_CATALOG"])
-#print(exoplanets.columns)
 
 # set date range for transit events
 if options.start_date != "" :
@@ -69,9 +68,9 @@ if options.end_date != "":
     params["END_DATE"] = options.end_date
 
 if options.object == "" :
-    # Survey mode, search all planets in database
+    ### SURVEY MODE ####
     # filter exoplanet database to match search criteria
-    transiting_planets = exoplanets[(~exoplanets["radius"].mask) &
+    selected_planets = exoplanets[(~exoplanets["radius"].mask) &
                                     (~exoplanets["mass"].mask) &
                                     (~exoplanets["orbital_period"].mask) &
                                     (~(exoplanets["detection_type"]=="Imaging")) &
@@ -86,9 +85,10 @@ if options.object == "" :
                                     (exoplanets["mag_v"] > params["MIN_VMAG"]) &
                                     (exoplanets["mag_v"] < params["MAX_VMAG"])]
 
-else :    
+else :
+    ### OBJECT MODE ####
     # filter exoplanet table to get only the selectected exoplanet
-    transiting_planets = exoplanets[exoplanets["name"] == options.object]
+    selected_planets = exoplanets[exoplanets["name"] == options.object]
     if len(transiting_planets) == 0 :
         print ("Object ID: '{}' not found in the database: {}".format(options.object, params["EXOPLANET_CATALOG"]))
         exit()
@@ -97,8 +97,8 @@ else :
 tbl = Table()
 
 # start loop over each selected object in database
-for i in range(len(transiting_planets)) :
-    tbl = add_observable_transits(params, transiting_planets, tbl=tbl, planet_index=i, verbose=options.verbose)
+for i in range(len(selected_planets)) :
+    tbl = add_observable_transits(params, selected_planets, tbl=tbl, planet_index=i, verbose=options.verbose)
     
 if len(tbl) == 0 :
     print("There are no observable transits within the selected time range. Exiting ...")
