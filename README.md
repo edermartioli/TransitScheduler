@@ -9,5 +9,5 @@ python transit_scheduler.py --start_date="2024-05-03T18:00:00" --end_date="2024-
 ```
 To search an specific planet:
 ```
-python transit_scheduler_obj.py --object="AU Mic b" --start_date="2024-01-01T00:00:00" --end_date="2024-12-31T23:59:59"
+python transit_scheduler.py --object="AU Mic b" --start_date="2024-01-01T00:00:00" --end_date="2024-12-31T23:59:59"
 ```
