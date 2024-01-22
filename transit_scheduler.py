@@ -10,6 +10,8 @@
     
     python transit_scheduler.py --start_date="2024-05-03T18:00:00" --end_date="2024-06-02T07:00:00"  --params="/Users/eder/ExoplanetScheduler/params.yaml"
     
+    python transit_scheduler.py --object="AU Mic b" --start_date="2024-01-01T00:00:00" --end_date="2024-12-31T23:59:59"
+    
     """
 
 __version__ = "1.0"
@@ -30,6 +32,7 @@ from obs_transits_lib import add_observable_transits, init_params
 
 parser = OptionParser()
 parser.add_option("-o", "--output", dest="output", help='Output',type='string', default="")
+parser.add_option("-i", "--object", dest="object", help='Object ID (e.g. "HATS-29 b")',type='string', default="")
 parser.add_option("-p", "--params", dest="params", help='Parameters yaml file',type='string',default="params.yaml")
 parser.add_option("-e", "--exoplanet_catalog", dest="exoplanet_catalog", help='Exoplanet.eu catalog csv file',type='string',default="")
 parser.add_option("-1", "--start_date", dest="start_date", help='Start date (ISOT)',type='string', default="2024-04-01T00:00:00")
@@ -65,21 +68,30 @@ if options.start_date != "" :
 if options.end_date != "":
     params["END_DATE"] = options.end_date
 
-# filter exoplanet database to match search criteria
-transiting_planets = exoplanets[(~exoplanets["radius"].mask) &
-                                (~exoplanets["mass"].mask) &
-                                (~exoplanets["orbital_period"].mask) &
-                                (~(exoplanets["detection_type"]=="Imaging")) &
-                                (exoplanets["mass"] > params["MIN_MASS"]) &
-                                (exoplanets["mass"] < params["MAX_MASS"]) &
-                                (exoplanets["orbital_period"] > params["MIN_PERIOD"]) &
-                                (exoplanets["orbital_period"] < params["MAX_PERIOD"]) &
-                                (exoplanets["dec"] > params["MIN_DECLINATION"]) &
-                                (exoplanets["dec"] < params["MAX_DECLINATION"]) &
-                                (exoplanets["ra"] > params["MIN_RA"]) &
-                                (exoplanets["ra"] < params["MAX_RA"]) &
-                                (exoplanets["mag_v"] > params["MIN_VMAG"]) &
-                                (exoplanets["mag_v"] < params["MAX_VMAG"])]
+if options.object == "" :
+    # Survey mode, search all planets in database
+    # filter exoplanet database to match search criteria
+    transiting_planets = exoplanets[(~exoplanets["radius"].mask) &
+                                    (~exoplanets["mass"].mask) &
+                                    (~exoplanets["orbital_period"].mask) &
+                                    (~(exoplanets["detection_type"]=="Imaging")) &
+                                    (exoplanets["mass"] > params["MIN_MASS"]) &
+                                    (exoplanets["mass"] < params["MAX_MASS"]) &
+                                    (exoplanets["orbital_period"] > params["MIN_PERIOD"]) &
+                                    (exoplanets["orbital_period"] < params["MAX_PERIOD"]) &
+                                    (exoplanets["dec"] > params["MIN_DECLINATION"]) &
+                                    (exoplanets["dec"] < params["MAX_DECLINATION"]) &
+                                    (exoplanets["ra"] > params["MIN_RA"]) &
+                                    (exoplanets["ra"] < params["MAX_RA"]) &
+                                    (exoplanets["mag_v"] > params["MIN_VMAG"]) &
+                                    (exoplanets["mag_v"] < params["MAX_VMAG"])]
+
+else :    
+    # filter exoplanet table to get only the selectected exoplanet
+    transiting_planets = exoplanets[exoplanets["name"] == options.object]
+    if len(transiting_planets) == 0 :
+        print ("Object ID: '{}' not found in the database: {}".format(options.object, params["EXOPLANET_CATALOG"]))
+        exit()
 
 # initialize output table
 tbl = Table()
@@ -96,8 +108,7 @@ if len(tbl) == 0 :
 tbl.sort("TRANSIT_CEN_JD")
 
 # print table of observable transit events
-if options.verbose :
-    print(tbl)
+print(tbl)
 
 # save table of observable transit events to file
 if options.output != "" :
