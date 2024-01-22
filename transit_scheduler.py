@@ -28,7 +28,7 @@ from astropy.table import Table
 import numpy as np
 from astropy.io import ascii
 
-from obs_transits_lib import add_observable_transits, init_params
+from obs_transits_lib import add_observable_transits, init_params, reset_params_for_object_search
 
 parser = OptionParser()
 parser.add_option("-o", "--output", dest="output", help='Output',type='string', default="")
@@ -87,9 +87,10 @@ if options.object == "" :
 
 else :
     ### OBJECT MODE ####
+    params = reset_params_for_object_search(params)
     # filter exoplanet table to get only the selectected exoplanet
     selected_planets = exoplanets[exoplanets["name"] == options.object]
-    if len(transiting_planets) == 0 :
+    if len(selected_planets) == 0 :
         print ("Object ID: '{}' not found in the database: {}".format(options.object, params["EXOPLANET_CATALOG"]))
         exit()
 

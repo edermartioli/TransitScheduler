@@ -90,15 +90,102 @@ def add_observable_transits(params, exoplanets_tbl, tbl=Table(), planet_index=0,
     if len(result) and depth > params["MIN_TRANSIT_DEPTH"] and depth < params["MAX_TRANSIT_DEPTH"]:
         
         # Feed information into the results table
-        result["GAIA_ID"] = np.full_like(result["FULLY_OBSERVABLE"],GID)
-        result["G_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],Gmag)
-        result["GAIA_TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],GTeff)
+        if params["INCLUDE_GAIA_DR3_INFO"] :
+            result["GAIA_ID"] = np.full_like(result["FULLY_OBSERVABLE"],GID)
+            result["G_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],Gmag)
+            result["GAIA_TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],GTeff)
         result["ORB_PERIOD"] = np.full_like(result["FULLY_OBSERVABLE"],per)
         result["TRANSIT_DEPTH"] = np.full_like(result["FULLY_OBSERVABLE"],depth)
         result["TRANSIT_DURATION"] = np.full_like(result["FULLY_OBSERVABLE"],dur)
         result["STAR_MASS"] = np.full_like(result["FULLY_OBSERVABLE"],mstar)
         result["V_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],exoplanets_tbl['mag_v'][planet_index])
         result["TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],exoplanets_tbl['star_teff'][planet_index])
+
+        if verbose :
+            print("\t {} full observable transits!".format(len(result)))
+            
+        # add observable events to the output table
+        tbl = vstack([tbl, result])
+
+    return tbl
+
+
+def add_toi_observable_transits(params, tois_tbl, tbl=Table(), toi_index=0, verbose=False) :
+                            
+    tic_id = "TIC {}".format(tois_tbl['TIC'][toi_index])
+    full_toi_id = "TOI-{}".format(tois_tbl['Full TOI ID'][toi_index])
+    toi_id = "TOI-{:.0f}".format(np.floor(tois_tbl['Full TOI ID'][toi_index]))
+    
+    per = tois_tbl['Orbital Period Value'][toi_index]
+    ra = tois_tbl['TIC Right Ascension'][toi_index]
+    dec = tois_tbl['TIC Declination'][toi_index]
+    
+    ep = tois_tbl['Epoch Value'][toi_index] + 2457000.0
+    ep_err = tois_tbl['Epoch Error'][toi_index]
+    
+    tmag = tois_tbl['TMag Value'][toi_index]
+    
+    GID = -1
+    Gmag, GTeff = np.nan, np.nan
+    # Below is to retrieve GAIA DR3 information for this object, it may be slow
+    if params["INCLUDE_GAIA_DR3_INFO"] :
+        try :
+            coord = SkyCoord(ra=ra, dec=dec, unit=(u.degree, u.degree), frame='icrs')
+            width, height = u.Quantity(0.01, u.deg), u.Quantity(0.01, u.deg)
+            Gaia.ROW_LIMIT = 5
+            r = Gaia.query_object_async(coordinate=coord, width=width, height=height)
+            GID = r['source_id'][0]
+            Gmag, GTeff = r['phot_g_mean_mag'][0], r['teff_val'][0]
+        except :
+            print("WARNING: Could not retrieve information Gaia DR3 catalog.")
+        
+    if verbose :
+        print("Searching observable transits for object {}/{}: {} {} RA={} DEC={} P={} d  Tmag={:.2f} GTeff={:.0f}".format(toi_index+1, len(tois_tbl), full_toi_id, tic_id, ra, dec, per, tmag, GTeff))
+
+    # calculate transit duration
+    dur = tois_tbl['Transit Duration Value'][toi_index]
+    dur_err = tois_tbl['Transit Duration Error'][toi_index]
+        
+    # get transit depth
+    depth = tois_tbl['Transit Depth Value'][toi_index] / 1e6
+    depth_err = tois_tbl['Transit Depth Error'][toi_index] / 1e6
+
+    # run routine to search for observable transits
+    result = observable_transits(ep,
+                                 per,
+                                 ra,
+                                 dec,
+                                 dur,
+                                 start_date = params["START_DATE"],
+                                 end_date = params["END_DATE"],
+                                 date_format='isot',
+                                 TimeZone = params["TIMEZONE"],
+                                 longitude = params["LONGITUDE"],
+                                 latitude = params["LATITUDE"],
+                                 altitude = params["ALTITUDE"],
+                                 minimum_baseline = params["MIN_BASELINE"],
+                                 obj_id = tic_id,
+                                 verbose = False,
+                                 full_transits_only = params["FULL_TRANSITS_ONLY"],
+                                 ra_in_hourangle = False )
+                          
+    # filter by transit depths
+    if len(result) and depth > params["MIN_TRANSIT_DEPTH"] and depth < params["MAX_TRANSIT_DEPTH"]:
+        
+        # Feed information into the results table
+        #result["TOI_ID"] = np.full_like(result["FULLY_OBSERVABLE"],toi_id,dtype="str")
+        #result["TIC_ID"] = np.full_like(result["FULLY_OBSERVABLE"],tic_id,dtype="str")
+        result["TIC_ID"] = np.full_like(result["FULLY_OBSERVABLE"],tois_tbl['TIC'][toi_index])
+        result["TOI_ID"] = np.full_like(result["FULLY_OBSERVABLE"],toi_id,dtype='str')
+        result["FULL_TOI_ID"] = np.full_like(result["FULLY_OBSERVABLE"],tois_tbl['Full TOI ID'][toi_index])
+        result["T_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],tmag)
+        if params["INCLUDE_GAIA_DR3_INFO"] :
+            result["GAIA_ID"] = np.full_like(result["FULLY_OBSERVABLE"],GID)
+            result["G_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],Gmag)
+            result["GAIA_TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],GTeff)
+        result["ORB_PERIOD"] = np.full_like(result["FULLY_OBSERVABLE"],per)
+        result["TRANSIT_DEPTH"] = np.full_like(result["FULLY_OBSERVABLE"],depth)
+        result["TRANSIT_DURATION"] = np.full_like(result["FULLY_OBSERVABLE"],dur)
 
         if verbose :
             print("\t {} full observable transits!".format(len(result)))
@@ -117,6 +204,37 @@ def init_params(params_filename) :
 
     return params
     
+
+def reset_params_for_object_search(params) :
+
+    params['MIN_TRANSIT_DEPTH'] = 0.0
+    params['MAX_TRANSIT_DEPTH'] = 1.0
+
+    # Define minimum and maximum orbital period (days)
+    params['MIN_PERIOD'] = 0.0
+    params['MAX_PERIOD'] = 1e10
+
+    # Define minimum and maximum planet mass (MJup)
+    params['MIN_MASS'] = 0.0
+    params['MAX_MASS'] = 1e10
+
+    # Define minimum and maximum V magnitude
+    params['MIN_VMAG'] = -1e10
+    params['MAX_VMAG'] = 1e10
+
+    # Define minimum and maximum T magnitude (For TOI objects)
+    params['MIN_TMAG'] = -1e10
+    params['MAX_TMAG'] = 1e10
+
+    # Define minimum and maximum declination (deg)
+    params['MIN_DECLINATION'] = -90
+    params['MAX_DECLINATION'] = +90
+
+    # Define minimum and maximum right ascention (deg)
+    params['MIN_RA'] = 0
+    params['MAX_RA'] = 360
+    
+    return params
     
 def get_sun_alt(observing_time, observer_location) :
 

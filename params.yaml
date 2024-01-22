@@ -4,6 +4,7 @@
 
 #### CATALOG FILES #####
 EXOPLANET_CATALOG: "exoplanet.eu_catalog.csv"
+TOI_CATALOG: "csv-file-toi-catalog.csv"
 #-------------------------------------
 
 #### CONFIGURATION PARAMETERS #####
@@ -58,6 +59,10 @@ MAX_MASS: 13.0
 # Define minimum and maximum V magnitude
 MIN_VMAG: -1
 MAX_VMAG: 15.0
+
+# Define minimum and maximum T magnitude (For TOI objects)
+MIN_TMAG: -1.0
+MAX_TMAG: 15.0
 
 # Define minimum and maximum declination (deg)
 MIN_DECLINATION: -90
