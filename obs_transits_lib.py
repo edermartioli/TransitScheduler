@@ -1,10 +1,123 @@
 from astropy.time import Time, TimeDelta
 import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-from astropy.table import Table
+from astropy.table import Table, vstack
 import numpy as np
 from scipy import constants
 
+from astropy.coordinates import SkyCoord
+from astroquery.gaia import Gaia
+import astropy.units as u
+
+import yaml
+
+
+def add_observable_transits(params, exoplanets_tbl, tbl=Table(), planet_index=0, verbose=False) :
+
+    obj_id = exoplanets_tbl['name'][planet_index]
+    per = exoplanets_tbl['orbital_period'][planet_index]
+    ra = exoplanets_tbl['ra'][planet_index]
+    dec = exoplanets_tbl['dec'][planet_index]
+    
+    # make sure epoch is defined
+    if np.isfinite(exoplanets_tbl['tconj'][planet_index]) :
+        ep = exoplanets_tbl['tconj'][planet_index]
+    elif np.isfinite(exoplanets_tbl['tzero_tr'][planet_index]) :
+        ep = exoplanets_tbl['tzero_tr'][planet_index]
+    else :
+        print("WARNING: input catalog does not provide a time of transit for object: {}. Exiting ... ".format(obj_id))
+        return tbl
+    
+    GID = -1
+    Gmag, GTeff = np.nan, np.nan
+    # Below is to retrieve GAIA DR3 information for this object, it may be slow
+    if params["INCLUDE_GAIA_DR3_INFO"] :
+        try :
+            coord = SkyCoord(ra=ra, dec=dec, unit=(u.degree, u.degree), frame='icrs')
+            width, height = u.Quantity(0.01, u.deg), u.Quantity(0.01, u.deg)
+            Gaia.ROW_LIMIT = 5
+            r = Gaia.query_object_async(coordinate=coord, width=width, height=height)
+            GID = r['source_id'][0]
+            Gmag, GTeff = r['phot_g_mean_mag'][0], r['teff_val'][0]
+        except :
+            print("WARNING: Could not retrieve information Gaia DR3 catalog.")
+        
+    if verbose :
+        print("Searching observable transits for object {}/{}: {} RA={} DEC={} P={} d  Gmag={:.2f} Teff={:.0f}".format(planet_index+1, len(exoplanets_tbl), obj_id, ra, dec, per, Gmag, GTeff))
+
+    # add more parameters
+    inc = exoplanets_tbl['inclination'][planet_index]
+    rp = exoplanets_tbl['radius'][planet_index]
+    mstar = exoplanets_tbl['star_mass'][planet_index]
+    rstar = exoplanets_tbl['star_radius'][planet_index]
+    ecc = 0
+    if np.isfinite(exoplanets_tbl['eccentricity'][planet_index]):
+        ecc = exoplanets_tbl['eccentricity'][planet_index]
+    om = 90
+    if np.isfinite(exoplanets_tbl['omega'][planet_index]):
+        om = exoplanets_tbl['omega'][planet_index]
+       
+    # calculate transit duration
+    dur = transit_duration(per, inc, ecc, om, rp, mstar, rstar) * 24
+    if np.isfinite(rp) and not np.isfinite(dur) :
+        dur = transit_duration(per, 90, 0, 90, rp, 1, 1) * 24
+    elif not np.isfinite(rp) and not np.isfinite(dur):
+        dur = transit_duration(per, 90, 0, 90, 0.03, 1, 1) * 24
+        
+    # run routine to search for observable transits
+    result = observable_transits(ep,
+                                 per,
+                                 ra,
+                                 dec,
+                                 dur,
+                                 start_date = params["START_DATE"],
+                                 end_date = params["END_DATE"],
+                                 date_format='isot',
+                                 TimeZone = params["TIMEZONE"],
+                                 longitude = params["LONGITUDE"],
+                                 latitude = params["LATITUDE"],
+                                 altitude = params["ALTITUDE"],
+                                 minimum_baseline = params["MIN_BASELINE"],
+                                 obj_id = obj_id,
+                                 verbose = False,
+                                 full_transits_only = params["FULL_TRANSITS_ONLY"],
+                                 ra_in_hourangle = False )
+                          
+    # calculate transit depth
+    depth = transit_depth(rstar, rp)
+
+    # filter by transit depths
+    if len(result) and depth > params["MIN_TRANSIT_DEPTH"] and depth < params["MAX_TRANSIT_DEPTH"]:
+        
+        # Feed information into the results table
+        result["GAIA_ID"] = np.full_like(result["FULLY_OBSERVABLE"],GID)
+        result["G_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],Gmag)
+        result["GAIA_TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],GTeff)
+        result["ORB_PERIOD"] = np.full_like(result["FULLY_OBSERVABLE"],per)
+        result["TRANSIT_DEPTH"] = np.full_like(result["FULLY_OBSERVABLE"],depth)
+        result["TRANSIT_DURATION"] = np.full_like(result["FULLY_OBSERVABLE"],dur)
+        result["STAR_MASS"] = np.full_like(result["FULLY_OBSERVABLE"],mstar)
+        result["V_MAG"] = np.full_like(result["FULLY_OBSERVABLE"],exoplanets_tbl['mag_v'][planet_index])
+        result["TEFF"] = np.full_like(result["FULLY_OBSERVABLE"],exoplanets_tbl['star_teff'][planet_index])
+
+        if verbose :
+            print("\t {} full observable transits!".format(len(result)))
+            
+        # add observable events to the output table
+        tbl = vstack([tbl, result])
+
+    return tbl
+
+
+def init_params(params_filename) :
+
+    # Load parameters from parameters file
+    with open(params_filename, 'r') as f:
+        params = yaml.safe_load(f)
+
+    return params
+    
+    
 def get_sun_alt(observing_time, observer_location) :
 
     # Calculate the Sun's position at the given observing time
