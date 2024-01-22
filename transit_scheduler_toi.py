@@ -46,11 +46,8 @@ try:
 except:
     print("Error: check usage with transit_scheduler.py -h "); sys.exit(1);
 
-if options.verbose:
-    print('TOI catalog: ', options.toi_catalog)
+if options.verbose and options.output != "":
     print('Output: ', options.output)
-    print('Start date: ', options.start_date)
-    print('End date: ', options.end_date)
 
 # Load parameters from parameters file
 params = init_params(options.params)
@@ -59,6 +56,9 @@ params = init_params(options.params)
 if options.toi_catalog != "":
     params["TOI_CATALOG"] = options.toi_catalog
 
+if options.verbose:
+    print('TOI catalog: ', params["TOI_CATALOG"])
+    
 # load exoplanet.eu catalog
 tois = ascii.read(params["TOI_CATALOG"])
 
@@ -67,6 +67,10 @@ if options.start_date != "" :
     params["START_DATE"] = options.start_date
 if options.end_date != "":
     params["END_DATE"] = options.end_date
+    
+if options.verbose:
+    print('Start date: ', params["START_DATE"])
+    print('End date: ', params["END_DATE"])
 
 # initialize output table
 tbl = Table()
