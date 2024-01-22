@@ -101,7 +101,7 @@ for i in range(len(transiting_planets)) :
     tbl = add_observable_transits(params, transiting_planets, tbl=tbl, planet_index=i, verbose=options.verbose)
     
 if len(tbl) == 0 :
-    print("There are no full observable transits within the selected time range. Exiting ...")
+    print("There are no observable transits within the selected time range. Exiting ...")
     exit()
         
 # sort final table by JD to make sure the events are ordered by date and not by object
