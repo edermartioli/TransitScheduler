@@ -1,5 +1,15 @@
 # TransitScheduler
-Toolkit to schedule transits of exoplanets
+Toolkit to schedule transits of exoplanets.
+
+Required libraries:
+```
+numpy version='1.24.3'
+scipy version='1.11.3'
+astropy version='5.3.4'
+astroquery version='0.4.6'
+yaml version='6.0.1'
+optparse versions='1.5.3'
+```
 
 Simple usage:
 --
