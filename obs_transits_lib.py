@@ -50,6 +50,10 @@ def add_observable_transits(params, exoplanets_tbl, tbl=Table(), planet_index=0,
     rp = exoplanets_tbl['radius'][planet_index]
     mstar = exoplanets_tbl['star_mass'][planet_index]
     rstar = exoplanets_tbl['star_radius'][planet_index]
+    if not np.isfinite(rstar) :
+        rstar = 1.0
+    if not np.isfinite(mstar) :
+        mstar = 1.0
     ecc = 0
     if np.isfinite(exoplanets_tbl['eccentricity'][planet_index]):
         ecc = exoplanets_tbl['eccentricity'][planet_index]
